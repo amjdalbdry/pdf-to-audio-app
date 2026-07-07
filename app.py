@@ -1,40 +1,47 @@
 import streamlit as st
 from gtts import gTTS
-import fitz  # PyMuPDF
-import io
+import fitz
+import easyocr
+from PIL import Image
+import numpy as np
 
-st.set_page_config(page_title="PDF to Audio", page_icon="🎧")
-st.title("🎧 محول الملفات إلى صوت")
+st.title("🎧 محول الملفات والصور إلى صوت")
 
-uploaded_file = st.file_uploader("ارفع ملف PDF هنا", type=['pdf'])
+# تحميل القارئ (استخدام الكاش لتسريع الأداء)
+@st.cache_resource
+def load_reader():
+    return easyocr.Reader(['ar', 'en'])
 
-if uploaded_file is not None:
-    # 1. استخراج النص من الـ PDF
-    with st.spinner('جاري استخراج النص...'):
-        pdf_document = fitz.open(stream=uploaded_file.read(), filetype="pdf")
-        text = ""
-        for page in pdf_document:
+reader = load_reader()
+
+option = st.radio("اختر وسيلة الإدخال:", ("رفع ملف PDF", "التقاط صورة بالكاميرا"))
+text = ""
+
+if option == "رفع ملف PDF":
+    uploaded_file = st.file_uploader("ارفع ملف PDF", type=["pdf"])
+    if uploaded_file:
+        doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+        for page in doc:
             text += page.get_text()
-        
-    if text.strip() == "":
-        st.error("لم نتمكن من استخراج نص من هذا الملف (قد يكون ملف صور).")
-    else:
-        st.success("تم استخراج النص بنجاح!")
-        st.text_area("النص المستخرج:", text[:1000] + "...", height=200)
 
-        # 2. تحويل النص إلى صوت
-        if st.button("تحويل إلى صوت"):
-            with st.spinner('جاري إنشاء الملف الصوتي...'):
-                tts = gTTS(text=text, lang='ar') # 'ar' للغة العربية، استخدم 'en' للإنجليزية
-                audio_file = io.BytesIO()
-                tts.write_to_fp(audio_file)
-                audio_file.seek(0)
-                
-                # 3. عرض زر التحميل
-                st.audio(audio_file, format='audio/mp3')
-                st.download_button(
-                    label="تحميل الملف الصوتي",
-                    data=audio_file,
-                    file_name="converted_audio.mp3",
-                    mime="audio/mp3"
-                )
+elif option == "التقاط صورة بالكاميرا":
+    camera_image = st.camera_input("التقط صورة للنص")
+    if camera_image:
+        image = Image.open(camera_image)
+        # تحويل الصورة إلى مصفوفة لقراءتها عبر الذكاء الاصطناعي
+        img_array = np.array(image)
+        with st.spinner('جاري قراءة الصورة...'):
+            results = reader.readtext(img_array, detail=0)
+            text = " ".join(results)
+
+if text:
+    st.write("تم استخراج النص بنجاح:")
+    st.text_area("النص المستخرج:", text, height=200)
+    
+    if st.button("تحويل إلى صوت"):
+        with st.spinner('جاري تحويل النص إلى صوت...'):
+            tts = gTTS(text=text, lang='ar')
+            tts.save("output.mp3")
+            st.audio("output.mp3")
+            with open("output.mp3", "rb") as file:
+                st.download_button("تحميل الملف الصوتي", file, "output.mp3")
