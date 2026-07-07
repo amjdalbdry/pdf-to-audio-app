@@ -1,6 +1,5 @@
 streamlit
 gtts
 pymupdf
-easyocr
 pillow
 numpy
