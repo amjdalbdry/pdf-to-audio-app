@@ -2,6 +2,5 @@ streamlit
 gtts
 pymupdf
 easyocr
-torch
 pillow
 numpy
