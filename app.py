@@ -23,12 +23,12 @@ if option == "رفع ملف PDF":
         doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
         for page in doc:
             text += page.get_text()
-
 elif option == "التقاط صورة بالكاميرا":
-    camera_image = st.camera_input("التقط صورة للنص")
+    # استخدام file_uploader مع تفعيل الكاميرا مباشرة
+    camera_image = st.file_uploader("التقاط صورة بواسطة الكاميرا", type=["jpg", "jpeg", "png"], accept_multiple_files=False)
+    
     if camera_image:
         image = Image.open(camera_image)
-        # تحويل الصورة إلى مصفوفة لقراءتها عبر الذكاء الاصطناعي
         img_array = np.array(image)
         with st.spinner('جاري قراءة الصورة...'):
             results = reader.readtext(img_array, detail=0)
